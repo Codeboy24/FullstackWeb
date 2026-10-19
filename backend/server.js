@@ -1,3 +1,9 @@
+// ==============================================================================
+// EXPRESS REST API SERVER (backend/server.js)
+// ==============================================================================
+// In-Memory Mock Database Implementation (No external database required)
+// Compatible with Express 5 path syntax.
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -42,15 +48,24 @@ let sportsData = [
 // ==============================================================================
 // MIDDLEWARE
 // ==============================================================================
+
+// 1. Enable Cross-Origin Resource Sharing (CORS)
 app.use(cors());
+
+// 2. JSON Body Parser
 app.use(express.json());
+
+// 3. Serve Frontend Static Assets
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ==============================================================================
 // RESTFUL API ENDPOINTS (/api/sports)
 // ==============================================================================
 
-// 1. GET ALL
+/**
+ * ENDPOINT 1: GET /api/sports
+ * PURPOSE: Retrieve all sport records
+ */
 app.get('/api/sports', (req, res) => {
   res.status(200).json({
     success: true,
@@ -59,7 +74,10 @@ app.get('/api/sports', (req, res) => {
   });
 });
 
-// 2. GET ONE BY ID
+/**
+ * ENDPOINT 2: GET /api/sports/:id
+ * PURPOSE: Fetch a single sport record by ID
+ */
 app.get('/api/sports/:id', (req, res) => {
   const targetId = parseInt(req.params.id, 10);
   const record = sportsData.find(item => item.id === targetId);
@@ -77,7 +95,10 @@ app.get('/api/sports/:id', (req, res) => {
   });
 });
 
-// 3. POST (CREATE)
+/**
+ * ENDPOINT 3: POST /api/sports
+ * PURPOSE: Create a new record (Player or Fixture)
+ */
 app.post('/api/sports', (req, res) => {
   const { record_type, player_name, position, jersey_number } = req.body;
 
@@ -120,7 +141,10 @@ app.post('/api/sports', (req, res) => {
   });
 });
 
-// 4. PUT (UPDATE)
+/**
+ * ENDPOINT 4: PUT /api/sports/:id
+ * PURPOSE: Update an existing record
+ */
 app.put('/api/sports/:id', (req, res) => {
   const targetId = parseInt(req.params.id, 10);
   const index = sportsData.findIndex(item => item.id === targetId);
@@ -171,7 +195,10 @@ app.put('/api/sports/:id', (req, res) => {
   });
 });
 
-// 5. DELETE
+/**
+ * ENDPOINT 5: DELETE /api/sports/:id
+ * PURPOSE: Delete a record by ID
+ */
 app.delete('/api/sports/:id', (req, res) => {
   const targetId = parseInt(req.params.id, 10);
   const initialLength = sportsData.length;
@@ -193,10 +220,11 @@ app.delete('/api/sports/:id', (req, res) => {
 });
 
 // ==============================================================================
-// ERROR HANDLER & WILDCARD FALLBACK
+// CENTRALIZED ERROR HANDLING MIDDLEWARE
 // ==============================================================================
 app.use((err, req, res, next) => {
   console.error('🔥 [Server Error]:', err.message);
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error.',
@@ -204,10 +232,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.get('*', (req, res) => {
+// ==============================================================================
+// EXPRESS 5 WILDCARD FALLBACK
+// ==============================================================================
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+// ==============================================================================
+// START SERVER
+// ==============================================================================
 app.listen(PORT, () => {
-  console.log(`🚀 Mock Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
