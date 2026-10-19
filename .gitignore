@@ -1,0 +1,22 @@
+# Dependencies
+backend/node_modules/
+frontend/node_modules/
+node_modules/
+
+# Environment variables & secrets
+backend/.env
+frontend/.env
+.env
+*.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & Editor generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

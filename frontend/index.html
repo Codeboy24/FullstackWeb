@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sports Team Roster & Fixtures</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- =========================================================================
+       APP HEADER & BRANDING
+       ========================================================================= -->
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="brand">
+        <span class="brand-icon">⚽</span>
+        <div>
+          <h1>Sports Team Roster &amp; Fixtures</h1>
+          <p class="subtitle">Single-Table CRUD Application • Pure Node.js, Express &amp; MySQL</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-api" id="apiStatusBadge">● Connecting to MySQL...</span>
+        <span class="badge badge-network" id="networkBadge">📶 LAN Accessible</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN CONTENT
+       ========================================================================= -->
+  <main class="container main-content">
+
+    <!-- Notification Toast / Alert Banner -->
+    <div id="toastNotification" class="toast hidden" role="alert" aria-live="polite">
+      <span id="toastIcon">ℹ️</span>
+      <span id="toastMessage">Connected to MySQL backend</span>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total Database Records</span>
+        <span class="stat-value" id="statTotal">0</span>
+      </div>
+      <div class="stat-card stat-players">
+        <span class="stat-label">Squad Players (Non-NULL)</span>
+        <span class="stat-value" id="statPlayers">0</span>
+      </div>
+      <div class="stat-card stat-fixtures">
+        <span class="stat-label">Match Fixtures (NULL Fields)</span>
+        <span class="stat-value" id="statFixtures">0</span>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SECTION 1: CREATE / EDIT RECORD FORM
+         ======================================================================= -->
+    <section class="card form-card">
+      <div class="card-header">
+        <h2 id="formTitle">➕ Add New Record</h2>
+        <span class="mode-badge" id="formModeBadge">CREATE MODE</span>
+      </div>
+
+      <!--
+        NOTE ON EVENT PREVENT DEFAULT:
+        This <form> has an onsubmit handler in app.js that calls `event.preventDefault()`.
+        This suppresses standard browser document reloads, preserving DOM state.
+      -->
+      <form id="sportsForm" novalidate>
+        <input type="hidden" id="recordId" value="">
+
+        <!-- Step 1: Record Type Selector -->
+        <div class="form-group">
+          <label class="form-label">Record Type <span class="required">*</span></label>
+          <div class="radio-toggle-group">
+            <label class="radio-pill active" id="typePlayerLabel">
+              <input type="radio" name="record_type" value="player" checked>
+              <span>👤 Player (Roster Member)</span>
+            </label>
+            <label class="radio-pill" id="typeFixtureLabel">
+              <input type="radio" name="record_type" value="fixture">
+              <span>📅 Fixture (Match Event)</span>
+            </label>
+          </div>
+          <p class="field-hint">
+            <strong>Single-Table Strategy:</strong> Selecting <em>Player</em> inserts values into <code>player_name</code>, <code>position</code>, and <code>jersey_number</code>. Selecting <em>Fixture</em> explicitly sets these fields to <code>NULL</code> in MySQL.
+          </p>
+        </div>
+
+        <!-- Step 2A: Fields for PLAYER -->
+        <div id="playerFieldsGroup" class="fields-section">
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="playerName" class="form-label">Player Name <span class="required">*</span></label>
+              <input type="text" id="playerName" class="form-control" placeholder="e.g. Kennedy Mweene">
+            </div>
+            <div class="form-group flex-1">
+              <label for="playerPosition" class="form-label">Position</label>
+              <input type="text" id="playerPosition" class="form-control" placeholder="e.g. Midfielder, Goalkeeper">
+            </div>
+            <div class="form-group flex-1">
+              <label for="jerseyNumber" class="form-label">Jersey Number</label>
+              <input type="number" id="jerseyNumber" class="form-control" min="1" max="99" placeholder="e.g. 10">
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2B: Informational Message for FIXTURE -->
+        <div id="fixtureFieldsGroup" class="fields-section hidden">
+          <div class="fixture-notice-box">
+            <h4>📅 Fixture Record Specification</h4>
+            <p>
+              In accordance with Question 9, a <strong>Fixture</strong> record represents an upcoming team match event.
+              In this single-table design, <code>player_name</code>, <code>position</code>, and <code>jersey_number</code> are
+              stored as <strong><code>NULL</code></strong>.
+            </p>
+            <p>
+              When you click <strong>Save Record</strong>, the backend will issue an <code>INSERT INTO sports (player_name, position, jersey_number) VALUES (NULL, NULL, NULL)</code> query to MySQL.
+            </p>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" id="submitBtn" class="btn btn-primary">
+            💾 Save Record to MySQL
+          </button>
+          <button type="button" id="cancelEditBtn" class="btn btn-secondary hidden">
+            ✖ Cancel Edit
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- =======================================================================
+         SECTION 2: DATA TABLE (READ, EDIT, DELETE)
+         ======================================================================= -->
+    <section class="card table-card">
+      <div class="card-header table-header-flex">
+        <div>
+          <h2>📋 sports Table Records (Live from MySQL)</h2>
+          <p class="subtitle">Direct rows from database: <code>campus_crud.sports</code></p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all">All Records</button>
+          <button class="filter-btn" data-filter="player">👤 Players</button>
+          <button class="filter-btn" data-filter="fixture">📅 Fixtures (NULLs)</button>
+          <button id="refreshBtn" class="btn btn-icon" title="Refresh Table from MySQL">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="table-responsive">
+        <table class="sports-table" id="sportsTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Player Name</th>
+              <th>Position</th>
+              <th>Jersey #</th>
+              <th>Created At (MySQL)</th>
+              <th>Updated At (MySQL)</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sportsTableBody">
+            <tr>
+              <td colspan="8" class="text-center loading-cell">
+                <span class="spinner"></span> Querying MySQL database...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SECTION 3: ARCHITECTURE & LOCAL NETWORK EXPLANATION
+         ======================================================================= -->
+    <section class="card educational-card">
+      <h3>💡 Architecture &amp; Local Network Access</h3>
+      <div class="education-grid">
+        <div class="edu-box">
+          <h4>1. Pure MySQL Execution</h4>
+          <p>
+            Every read, create, update, and delete executes raw SQL statements via <code>mysql2/promise</code> pool on port 3306.
+            There are zero mocks or in-memory arrays.
+          </p>
+        </div>
+        <div class="edu-box">
+          <h4>2. Local Network (LAN) Connectivity</h4>
+          <p>
+            The Express server binds to <code>0.0.0.0</code>, allowing any phone, laptop, or tablet on your Wi-Fi network to connect to <code>http://&lt;YOUR_PC_IP&gt;:3000</code>.
+          </p>
+        </div>
+        <div class="edu-box">
+          <h4>3. Polymorphic NULL Columns</h4>
+          <p>
+            Rows 6–10 have <code>NULL</code> for player fields. The frontend uses defensive rendering to display clean badges rather than literal <code>null</code> text.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container">
+      <p>Sports Team Roster &amp; Fixtures • Pure Express + MySQL2 Architecture • ICT251</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
